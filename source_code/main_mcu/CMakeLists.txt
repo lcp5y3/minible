@@ -6,7 +6,16 @@ project(main_mcu LANGUAGES C ASM)
 set(OUTPUT main_mcu.elf)
 
 set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_C_STANDARD 11)
 
+set(Platform "miniBLE_V2" CACHE STRING "Select the target platforme")
+set(PlatformList "miniBLE;miniBLE_V2;Emulator")
+set_property(CACHE Platform PROPERTY STRINGS ${PlatformList})
+if(NOT ${Platform} IN_LIST PlatformList)
+  message(FATAL_ERROR "Platform must be one of this: ${PlatformList}")
+endif()
+
+message(STATUS "Building main mcu for plateform: ${Platform}")
 set(SRC
   src/CLOCKS/driver_clocks.c
   src/COMMS/comms_aux_mcu.c
@@ -64,18 +73,37 @@ set(SRC
   src/I2C/driver_i2c.c
   src/I2C/mp2710.c
   src/I2C/pcf85263a.c
-  # @fixme this depend of compile option
-  src/ACCELEROMETER/lis2dh12.c
-  src/OLED/ssd1363.c
 )
+
+set(TEXT_SEC_START 0x2000)
+if(${Platform} STREQUAL miniBLE)
+  set(SRC ${SRC}
+    src/ACCELEROMETER/lis2hh12.c
+    src/OLED/sh1122.c
+  )
+  set(TEXT_SEC_START 0x8000)
+  set(TARGET_PLATFORM PLAT_V7_SETUP)
+elseif(${Platform} STREQUAL miniBLE_V2)
+  set(SRC ${SRC}
+    src/ACCELEROMETER/lis2dh12.c
+    src/OLED/ssd1363.c
+  )
+  set(TEXT_SEC_START 0x0)
+  set(TARGET_PLATFORM V2_PLAT_V1_SETUP)
+elseif(${Platform} STREQUAL Emulator)
+else()
+  message(FATAL_ERROR "Platform: ${Platform} not recognize")
+endif()
+
+# message(WARNING "src: ${SRC}")
 
 add_executable(${OUTPUT} ${SRC})
 target_link_options(${OUTPUT} PRIVATE -T "${PROJECT_SOURCE_DIR}/src/ASF/sam0/utils/linker_scripts/samd21/gcc/samd21g18a_flash.ld")
 target_link_options(${OUTPUT} PRIVATE -L"src/ASF/thirdparty/CMSIS/Lib/GCC" -L"Device_Startup")
 target_link_options(${OUTPUT} PRIVATE
   -Wl,-section-start=.start_app_function_addr=0x200
-    -Wl,-section-start=.flash_start_addr=0x0
-    -Wl,-section-start=.text=0x0 # @fixme $(TEXT_SEC_START)
+  -Wl,-section-start=.flash_start_addr=0x0
+  -Wl,-section-start=.text=${TEXT_SEC_START}
   -Wl,--entry=Reset_Handler
   # -Wl,--cref
   # -Xlinker --undefined=jump_to_application_function_addr
