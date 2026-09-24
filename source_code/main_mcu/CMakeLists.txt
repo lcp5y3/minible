@@ -3,42 +3,11 @@
 
 cmake_minimum_required(VERSION 4.0)
 project(main_mcu LANGUAGES C ASM)
+set(OUTPUT main_mcu.elf)
+
 set(CMAKE_BUILD_TYPE Debug)
 
 set(SRC
-  src/BearSSL/src/symcipher/aes_ct.c
-  src/BearSSL/src/symcipher/aes_ct_ctr.c
-  src/BearSSL/src/symcipher/aes_ct_ctrcbc.c
-  src/BearSSL/src/symcipher/aes_ct_enc.c
-  src/BearSSL/src/hash/sha1.c
-  src/BearSSL/src/hash/sha2small.c
-  src/BearSSL/src/mac/hmac.c
-  src/BearSSL/src/rand/hmac_drbg.c
-  src/BearSSL/src/ec/ec_p256_m15.c
-  src/BearSSL/src/ec/ecdsa_i15_sign_raw.c
-  src/BearSSL/src/ec/ec_keygen.c
-  src/BearSSL/src/ec/ec_pubkey.c
-  src/BearSSL/src/ec/ec_secp256r1.c
-  src/BearSSL/src/ec/ec_secp384r1.c
-  src/BearSSL/src/ec/ec_secp521r1.c
-  src/BearSSL/src/ec/ecdsa_i15_bits.c
-  src/BearSSL/src/int/i15_ninv15.c
-  src/BearSSL/src/int/i15_encode.c
-  src/BearSSL/src/int/i15_decode.c
-  src/BearSSL/src/int/i15_decmod.c
-  src/BearSSL/src/int/i15_add.c
-  src/BearSSL/src/int/i15_sub.c
-  src/BearSSL/src/int/i15_modpow.c
-  src/BearSSL/src/int/i15_muladd.c
-  src/BearSSL/src/int/i15_montmul.c
-  src/BearSSL/src/int/i15_fmont.c
-  src/BearSSL/src/int/i15_iszero.c
-  src/BearSSL/src/int/i15_rshift.c
-  src/BearSSL/src/int/i15_bitlen.c
-  src/BearSSL/src/int/i15_tmont.c
-  src/BearSSL/src/codec/ccopy.c
-  src/BearSSL/src/codec/dec32be.c
-  src/BearSSL/src/codec/enc32be.c
   src/CLOCKS/driver_clocks.c
   src/COMMS/comms_aux_mcu.c
   src/COMMS/comms_hid_msgs.c
@@ -100,10 +69,10 @@ set(SRC
   src/OLED/ssd1363.c
 )
 
-add_executable(main_mcu.elf ${SRC})
-target_link_options(main_mcu.elf PRIVATE -T "${PROJECT_SOURCE_DIR}/src/ASF/sam0/utils/linker_scripts/samd21/gcc/samd21g18a_flash.ld")
-target_link_options(main_mcu.elf PRIVATE -L"src/ASF/thirdparty/CMSIS/Lib/GCC" -L"Device_Startup")
-target_link_options(main_mcu.elf PRIVATE
+add_executable(${OUTPUT} ${SRC})
+target_link_options(${OUTPUT} PRIVATE -T "${PROJECT_SOURCE_DIR}/src/ASF/sam0/utils/linker_scripts/samd21/gcc/samd21g18a_flash.ld")
+target_link_options(${OUTPUT} PRIVATE -L"src/ASF/thirdparty/CMSIS/Lib/GCC" -L"Device_Startup")
+target_link_options(${OUTPUT} PRIVATE
   -Wl,-section-start=.start_app_function_addr=0x200
     -Wl,-section-start=.flash_start_addr=0x0
     -Wl,-section-start=.text=0x0 # @fixme $(TEXT_SEC_START)
@@ -112,7 +81,7 @@ target_link_options(main_mcu.elf PRIVATE
   # -Xlinker --undefined=jump_to_application_function_addr
   # -Xlinker --undefined=jump_to_application_function
 )
-target_compile_options(main_mcu.elf PRIVATE
+target_compile_options(${OUTPUT} PRIVATE
   -mlong-calls
   -Wall
   -mcpu=cortex-m0plus
@@ -159,37 +128,15 @@ target_compile_options(main_mcu.elf PRIVATE
   -Wlogical-op
   -Wnull-dereference
   -Wjump-misses-init
-  # @fixme needed by bearssl asm code because this asm code use r7 wich
-  # is used as frame-pointer by the compiler
-  # using -Os opti seen fixing this too
-  -fomit-frame-pointer
+  # @fixme this must be config by CMAKE_BUILD_TYPE
   -Os
 )
-target_compile_definitions(main_mcu.elf PRIVATE
+target_compile_definitions(${OUTPUT} PRIVATE
   -D__SAMD21G18A__
   -DBOARD=USER_BOARD
-  -DARM_MATH_CM0PLUS=true
-  -D__CORTEX_SC=0
-  -DBR_ARMEL_CORTEXM_GCC=1
-  -DBR_amd64=0
-  -DBR_BE_UNALIGNED=0
-  -DBR_CT_MUL15=0
-  -DBR_ENABLE_INTRINSICS=0
-  -DBR_CT_MUL31=0
-  -DBR_i386=0
-  -DBR_LE_UNALIGNED=0
-  -DBR_NO_ARITH_SHIFT=0
-  -DBR_POWER_ASM_MACROS=0
-  -D_ARCH_PWR8=0
-  -D_MSC_VER=0
-  -D_M_IX86=0
-  -D_M_X64=0
-  -D__clang__=0
-  -DBR_POWER8=0
-  # @fixme
-  V2_PLAT_V1_SETUP=1
+  -D${TARGET_PLATFORM}=1
 )
-target_include_directories(main_mcu.elf PRIVATE
+target_include_directories(${OUTPUT} PRIVATE
   src/ASF/thirdparty/CMSIS/Include
   src/ASF/common/boards
   src/ASF/sam0/utils
@@ -231,8 +178,9 @@ target_include_directories(main_mcu.elf PRIVATE
   src/GUI
   src/NODEMGMT
   src/RNG
-  src/BearSSL/src
-  src/BearSSL/inc
   src/CRYPTO
   src/I2C
 )
+
+include(cmake/bearSSL.cmake)
+target_link_libraries(${OUTPUT} bearSSL)
