@@ -4,7 +4,7 @@
 cmake_minimum_required(VERSION 4.0)
 project(main_mcu LANGUAGES C ASM)
 set(APP main_mcu.elf)
-# set(BOOTLOADER main_bootloader.elf)
+set(BOOTLOADER main_bootloader.elf)
 
 set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_C_STANDARD 11)
@@ -142,11 +142,6 @@ endif()
 
 include(cmake/bearSSL.cmake)
 # message(WARNING "src: ${SRC}")
-add_compile_definitions(${APP} PRIVATE
-  -D__SAMD21G18A__
-  -DBOARD=USER_BOARD
-  -D${TARGET_PLATFORM}=1
-)
 add_link_options(-T "${PROJECT_SOURCE_DIR}/src/ASF/sam0/utils/linker_scripts/samd21/gcc/samd21g18a_flash.ld")
 add_link_options(-L"src/ASF/thirdparty/CMSIS/Lib/GCC" -L"Device_Startup")
 
@@ -154,6 +149,11 @@ message(WARNING "${APP}/${SRC}")
 add_executable(${APP} src/main.c ${SRC})
 target_include_directories(${APP} PRIVATE ${INC})
 target_link_libraries(${APP} bearSSL)
+target_compile_definitions(${APP} PRIVATE
+  -D__SAMD21G18A__
+  -DBOARD=USER_BOARD
+  -D${TARGET_PLATFORM}=1
+)
 target_link_options(${APP} PRIVATE
   -Wl,-section-start=.start_app_function_addr=0x200
   -Wl,-section-start=.flash_start_addr=0x0
@@ -164,19 +164,24 @@ target_link_options(${APP} PRIVATE
   # -Xlinker --undefined=jump_to_application_function
 )
 
-# add_executable(${BOOTLOADER} src/bootloader.c ${SRC})
-# target_compile_definitions(${BOOTLOADER} PRIVATE BOOTLOADER)
-# target_include_directories(${BOOTLOADER} PRIVATE ${INC})
-# target_link_libraries(${BOOTLOADER} bearSSL)
-# target_link_options(${BOOTLOADER} PRIVATE
-#   -Wl,-section-start=.start_app_function_addr=0x200
-#   -Wl,-section-start=.flash_start_addr=0x0
-#   -Wl,-section-start=.text=0x0
-#   -Wl,--entry=Reset_Handler
+add_executable(${BOOTLOADER} src/bootloader.c ${SRC})
+target_include_directories(${BOOTLOADER} PRIVATE ${INC})
+target_compile_definitions(${BOOTLOADER} PRIVATE
+  -DBOOTLOADER
+  -D__SAMD21G18A__
+  -DBOARD=USER_BOARD
+  -D${TARGET_PLATFORM}=1
+)
+target_link_libraries(${BOOTLOADER} bearSSL)
+target_link_options(${BOOTLOADER} PRIVATE
+  -Wl,-section-start=.start_app_function_addr=0x200
+  -Wl,-section-start=.flash_start_addr=0x0
+  -Wl,-section-start=.text=0x0
+  -Wl,--entry=Reset_Handler
 #   # -Wl,--cref
 #   # -Xlinker --undefined=jump_to_application_function_addr
 #   # -Xlinker --undefined=jump_to_application_function
-# )
+)
 
 add_compile_options(
   -mlong-calls
