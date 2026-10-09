@@ -27,7 +27,7 @@
 #include "bearssl_ec.h"
 #include "custom_fs.h"
 #include "dataflash.h"
-#include "lis2hh12.h"
+#include "acc_wrapper.h"
 #include "dbflash.h"
 #include "defines.h"
 #include "sh1122.h"

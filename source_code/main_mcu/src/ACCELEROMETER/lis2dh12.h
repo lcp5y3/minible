@@ -20,8 +20,8 @@
 *    Author:   Mathieu Stephan
 */
 
-#ifndef LIS2HH12_H_
-#define LIS2HH12_H_
+#ifndef LIS2DH12_H_
+#define LIS2DH12_H_
 
 #include "platform_defines.h"
 #ifndef MINIBLE_V1
@@ -70,4 +70,4 @@ void lis2dh12_reset(accelerometer_descriptor_t* descriptor_pt);
 
 
 #endif /* MINIBLE_V1 */
-#endif /* LIS2HH12_H_ */
+#endif /* LIS2DH12_H_ */
