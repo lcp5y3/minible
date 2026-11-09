@@ -8,6 +8,8 @@ set(BOOTLOADER main_bootloader.elf)
 
 set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_FLAGS_DEBUG "-Os")
+set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 
 set(Platform "miniBLE_V2" CACHE STRING "Select the target platforme")
 set(PlatformList "miniBLE;miniBLE_V2;Emulator")
@@ -18,17 +20,12 @@ endif()
 
 message(STATUS "Building main mcu for plateform: ${Platform}")
 set(SRC
-  src/CLOCKS/driver_clocks.c
   src/COMMS/comms_aux_mcu.c
   src/COMMS/comms_hid_msgs.c
   src/COMMS/comms_hid_msgs_debug.c
-  src/DMA/dma.c
   src/FILESYSTEM/custom_bitstream.c
   src/FILESYSTEM/custom_fs.c
   src/FILESYSTEM/custom_fs_emergency_font.c
-  src/FLASH/dataflash.c
-  src/FLASH/dbflash.c
-  src/functional_testing.c
   src/GUI/gui_carousel.c
   src/GUI/gui_dispatcher.c
   src/GUI/gui_menu.c
@@ -47,53 +44,15 @@ set(SRC
   src/LOGIC/logic_accelerometer.c
   src/NODEMGMT/nodemgmt.c
   src/OLED/mooltipass_graphics_bundle.c
-  src/PLATFORM/platform_io.c
   src/RNG/rng.c
-  src/SECURITY/fuses.c
   src/SERCOM/driver_sercom.c
   src/SE_SMARTCARD/smartcard_highlevel.c
   src/SE_SMARTCARD/smartcard_lowlevel.c
   src/TIMER/driver_timer.c
   src/utils.c
-  src/ASF/common2/boards/user_board/init.c
-  src/ASF/common/utils/interrupt/interrupt_sam_nvic.c
-  src/ASF/sam0/drivers/system/clock/clock_samd21_r21_da_ha1/clock.c
-  src/ASF/sam0/drivers/system/clock/clock_samd21_r21_da_ha1/gclk.c
-  src/ASF/sam0/drivers/system/interrupt/system_interrupt.c
-  src/ASF/sam0/drivers/system/pinmux/pinmux.c
-  src/ASF/sam0/drivers/system/system.c
-  src/ASF/sam0/utils/cmsis/samd21/source/gcc/startup_samd21.c
-  src/ASF/sam0/utils/cmsis/samd21/source/system_samd21.c
-  src/ASF/sam0/utils/syscalls/gcc/syscalls.c
   src/LOGIC/logic_fido2.c
-  src/CRYPTO/monocypher.c
-  src/CRYPTO/monocypher-ed25519.c
-  src/I2C/driver_i2c.c
-  src/I2C/mp2710.c
-  src/I2C/pcf85263a.c
 )
 set(INC
-  src/ASF/thirdparty/CMSIS/Include
-  src/ASF/common/boards
-  src/ASF/sam0/utils
-  src/ASF/sam0/utils/header_files
-  src/ASF/sam0/utils/preprocessor
-  src/ASF/thirdparty/CMSIS/Include
-  src/ASF/thirdparty/CMSIS/Lib/GCC
-  src/ASF/common/utils
-  src/ASF/sam0/utils/cmsis/samd21/include
-  src/ASF/sam0/utils/cmsis/samd21/source
-  src/ASF/sam0/drivers/system
-  src/ASF/sam0/drivers/system/clock/clock_samd21_r21_da_ha1
-  src/ASF/sam0/drivers/system/clock
-  src/ASF/sam0/drivers/system/interrupt
-  src/ASF/sam0/drivers/system/interrupt/system_interrupt_samd21
-  src/ASF/sam0/drivers/system/pinmux
-  src/ASF/sam0/drivers/system/power
-  src/ASF/sam0/drivers/system/power/power_sam_d_r_h
-  src/ASF/sam0/drivers/system/reset
-  src/ASF/sam0/drivers/system/reset/reset_sam_d_r_h
-  src/ASF/common2/boards/user_board
   src
   src/config
   src/PLATFORM
@@ -103,7 +62,6 @@ set(INC
   src/FILESYSTEM
   src/DMA
   src/TIMER
-  ../packs/samd21a/include
   src/SE_SMARTCARD
   src/OLED
   src/ACCELEROMETER
@@ -136,12 +94,93 @@ elseif(${Platform} STREQUAL miniBLE_V2)
   set(TEXT_SEC_START 0x0)
   set(TARGET_PLATFORM V2_PLAT_V1_SETUP)
 elseif(${Platform} STREQUAL Emulator)
+  set(SRC ${SRC}
+    src/EMU/dma.c
+    src/EMU/dataflash.c
+    src/EMU/dbflash.c
+    src/GUI/gui_carousel.c
+    src/GUI/gui_dispatcher.c
+    src/GUI/gui_menu.c
+    src/GUI/gui_prompts.c
+    src/EMU/platform_io.c
+    src/EMU/fuses.c
+    src/EMU/driver_sercom.c
+    src/EMU/smartcard_lowlevel.c
+    src/EMU/emu_aux_mcu.c
+    src/EMU/emulator.cpp
+    src/EMU/emu_oled.cpp
+    src/EMU/emu_smartcard.cpp
+    src/EMU/emu_storage.cpp
+    src/EMU/emulator_ui.cpp
+    src/main.c
+  )
+  set(INC ${INC}
+    src/EMU
+  )
 else()
   message(FATAL_ERROR "Platform: ${Platform} not recognize")
 endif()
 
 include(cmake/bearSSL.cmake)
-# message(WARNING "src: ${SRC}")
+
+if(${Platform} STREQUAL Emulator)
+  add_executable(minible ${SRC})
+  target_include_directories(minible PRIVATE ${INC})
+  target_link_libraries(minible PRIVATE bearSSL)
+  target_compile_definitions(minible PRIVATE
+    EMULATOR_BUILD
+    PLAT_V6_SETUP
+  )
+else()
+  set(INC ${INC}
+    src/ASF/thirdparty/CMSIS/Include
+    src/ASF/common/boards
+    src/ASF/sam0/utils
+    src/ASF/sam0/utils/header_files
+    src/ASF/sam0/utils/preprocessor
+    src/ASF/thirdparty/CMSIS/Include
+    src/ASF/thirdparty/CMSIS/Lib/GCC
+    src/ASF/common/utils
+    src/ASF/sam0/utils/cmsis/samd21/include
+    src/ASF/sam0/utils/cmsis/samd21/source
+    src/ASF/sam0/drivers/system
+    src/ASF/sam0/drivers/system/clock/clock_samd21_r21_da_ha1
+    src/ASF/sam0/drivers/system/clock
+    src/ASF/sam0/drivers/system/interrupt
+    src/ASF/sam0/drivers/system/interrupt/system_interrupt_samd21
+    src/ASF/sam0/drivers/system/pinmux
+    src/ASF/sam0/drivers/system/power
+    src/ASF/sam0/drivers/system/power/power_sam_d_r_h
+    src/ASF/sam0/drivers/system/reset
+    src/ASF/sam0/drivers/system/reset/reset_sam_d_r_h
+    src/ASF/common2/boards/user_board
+    ../packs/samd21a/include
+  )
+  set(SRC ${SRC}
+    src/ASF/common/utils/interrupt/interrupt_sam_nvic.c
+    src/ASF/common2/boards/user_board/init.c
+    src/ASF/sam0/drivers/system/clock/clock_samd21_r21_da_ha1/clock.c
+    src/ASF/sam0/drivers/system/clock/clock_samd21_r21_da_ha1/gclk.c
+    src/ASF/sam0/drivers/system/interrupt/system_interrupt.c
+    src/ASF/sam0/drivers/system/pinmux/pinmux.c
+    src/ASF/sam0/drivers/system/system.c
+    src/ASF/sam0/utils/cmsis/samd21/source/gcc/startup_samd21.c
+    src/ASF/sam0/utils/cmsis/samd21/source/system_samd21.c
+    src/ASF/sam0/utils/syscalls/gcc/syscalls.c
+    src/CRYPTO/monocypher-ed25519.c
+    src/CRYPTO/monocypher.c
+    src/DMA/dma.c
+    src/FLASH/dataflash.c
+    src/FLASH/dbflash.c
+    src/I2C/driver_i2c.c
+    src/I2C/mp2710.c
+    src/I2C/pcf85263a.c
+    src/PLATFORM/platform_io.c
+    src/SECURITY/fuses.c
+    src/functional_testing.c
+    src/CLOCKS/driver_clocks.c
+  )
+message(WARNING "src: ${SRC}")
 add_link_options(-T "${PROJECT_SOURCE_DIR}/src/ASF/sam0/utils/linker_scripts/samd21/gcc/samd21g18a_flash.ld")
 add_link_options(-L"src/ASF/thirdparty/CMSIS/Lib/GCC" -L"Device_Startup")
 
@@ -183,6 +222,7 @@ target_link_options(${BOOTLOADER} PRIVATE
 #   # -Xlinker --undefined=jump_to_application_function
 )
 
+endif()
 add_compile_options(
   -mlong-calls
   -Wall
@@ -230,6 +270,6 @@ add_compile_options(
   -Wlogical-op
   -Wnull-dereference
   -Wjump-misses-init
-  # @fixme this must be config by CMAKE_BUILD_TYPE
+# @fixme this must be config by CMAKE_BUILD_TYPE
   # -Os
 )
