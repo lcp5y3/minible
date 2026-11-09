@@ -1,6 +1,6 @@
 # BearSSL cmake config
 
-set(SRC
+set(BEARSSL_SRC
   src/BearSSL/src/symcipher/aes_ct.c
   src/BearSSL/src/symcipher/aes_ct_ctr.c
   src/BearSSL/src/symcipher/aes_ct_ctrcbc.c
@@ -36,29 +36,45 @@ set(SRC
   src/BearSSL/src/codec/enc32be.c
 )
 
-add_library(bearSSL STATIC ${SRC})
+add_library(bearSSL STATIC ${BEARSSL_SRC})
 target_include_directories(bearSSL PUBLIC
   src/BearSSL/inc
   src/BearSSL/src
 )
 target_compile_options(bearSSL PRIVATE -fomit-frame-pointer)
-target_compile_definitions(bearSSL PRIVATE
-  -DARM_MATH_CM0PLUS=true
-  -D__CORTEX_SC=0
-  -DBR_ARMEL_CORTEXM_GCC=1
-  -DBR_amd64=0
-  -DBR_BE_UNALIGNED=0
-  -DBR_CT_MUL15=0
-  -DBR_ENABLE_INTRINSICS=0
-  -DBR_CT_MUL31=0
-  -DBR_i386=0
-  -DBR_LE_UNALIGNED=0
-  -DBR_NO_ARITH_SHIFT=0
-  -DBR_POWER_ASM_MACROS=0
-  -D_ARCH_PWR8=0
-  -D_MSC_VER=0
-  -D_M_IX86=0
-  -D_M_X64=0
-  -D__clang__=0
-  -DBR_POWER8=0
-)
+
+if(${Platform} STREQUAL Emulator)
+  target_compile_definitions(bearSSL PRIVATE
+    -DBR_BE_UNALIGNED=0
+    -DBR_CT_MUL15=0
+    -DBR_ENABLE_INTRINSICS=0
+    -DBR_CT_MUL31=0
+    -DBR_LE_UNALIGNED=0
+    -DBR_NO_ARITH_SHIFT=0
+    -DBR_POWER_ASM_MACROS=0
+    -D_ARCH_PWR8=0
+    -DBR_POWER8=0
+  )
+else()
+  target_compile_definitions(bearSSL PRIVATE
+    -DARM_MATH_CM0PLUS=true
+    -D__CORTEX_SC=0
+    -DBR_ARMEL_CORTEXM_GCC=1
+    -DBR_amd64=0
+    -DBR_BE_UNALIGNED=0
+    -DBR_CT_MUL15=0
+    -DBR_ENABLE_INTRINSICS=0
+    -DBR_CT_MUL31=0
+    -DBR_i386=0
+    -DBR_LE_UNALIGNED=0
+    -DBR_NO_ARITH_SHIFT=0
+    -DBR_POWER_ASM_MACROS=0
+    -D_ARCH_PWR8=0
+    -D_MSC_VER=0
+    -D_M_IX86=0
+    -D_M_X64=0
+    -D__clang__=0
+    -DBR_POWER8=0
+  )
+endif()
+
